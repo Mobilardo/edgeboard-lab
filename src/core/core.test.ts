@@ -91,7 +91,7 @@ describe('risk and materials', () => {
     const plan = createBoardPlan(spec, { ...limits, machineWidth: 250 }, options);
     expect(plan.risk.warnings.some((warning) => warning.code === 'machine')).toBe(true);
   });
-  it('keeps risk score within 0–100', () => {
+  it('keeps risk score within 0-100', () => {
     const plan = createBoardPlan({ ...spec, width: 900 }, { ...limits, maxClampWidth: 100, machineWidth: 100 }, { ...options, complexity: 10 });
     expect(plan.risk.score).toBeGreaterThanOrEqual(0); expect(plan.risk.score).toBeLessThanOrEqual(100);
   });
