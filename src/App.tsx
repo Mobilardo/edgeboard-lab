@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createBoardPlan, createSaferPlan, defaultSpecies } from './core/index';
 import type { BoardPlan, BoardSpec, PatternFamily, RiskTolerance, ShopLimits } from './core/index';
 
@@ -32,42 +32,137 @@ function NumberField({ label, value, min, max, step = 1, unit = 'mm', onChange }
 
 
 function BoardModel3D({ plan }: { plan: BoardPlan }) {
-  const [rotation, setRotation] = useState({ x: 58, y: -34 });
-  const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
-  const [start, setStart] = useState(rotation);
-  const depth = Math.max(28, Math.min(70, plan.spec.thickness * 1.15));
-  const faceStyle = {
-    aspectRatio: `${plan.spec.length} / ${plan.spec.width}`,
-    gridTemplateColumns: plan.grid.columnWidths.map((width) => `${width}fr`).join(' '),
-    gridTemplateRows: plan.grid.rowHeights.map((height) => `${height}fr`).join(' '),
-    '--board-depth': `${depth}px`,
-    '--board-rot-x': `${rotation.x}deg`,
-    '--board-rot-y': `${rotation.y}deg`,
-  } as React.CSSProperties;
-  const beginDrag = (event: React.PointerEvent<HTMLDivElement>) => {
-    event.currentTarget.setPointerCapture(event.pointerId);
-    setDrag({ x: event.clientX, y: event.clientY });
-    setStart(rotation);
-  };
-  const moveDrag = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!drag) return;
-    setRotation({ x: Math.max(28, Math.min(74, start.x - (event.clientY - drag.y) * 0.25)), y: start.y + (event.clientX - drag.x) * 0.35 });
-  };
-  const endDrag = () => setDrag(null);
+  const mountRef = useRef<HTMLDivElement | null>(null);
+  const [mode, setMode] = useState<'webgl' | 'top' | 'slices'>('webgl');
+
+  useEffect(() => {
+    if (mode !== 'webgl' || !mountRef.current) return;
+    let disposed = false;
+    let cleanup = () => undefined;
+
+    const createTexture = async () => {
+      const THREE = await import('three');
+      const canvas = document.createElement('canvas');
+      const cellSize = 44;
+      const rows = plan.grid.cells.length;
+      const columns = plan.grid.cells[0]?.length ?? 1;
+      canvas.width = columns * cellSize;
+      canvas.height = rows * cellSize;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return null;
+      ctx.fillStyle = '#1b2d32';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      plan.grid.cells.forEach((row, rowIndex) => row.forEach((species, columnIndex) => {
+        const x = columnIndex * cellSize;
+        const y = rowIndex * cellSize;
+        ctx.fillStyle = plan.species[species]?.color ?? '#9b6a44';
+        ctx.fillRect(x + 2, y + 2, cellSize - 4, cellSize - 4);
+        ctx.save();
+        ctx.translate(x + cellSize / 2, y + cellSize / 2);
+        ctx.rotate(((rowIndex + columnIndex) % 2 ? 28 : -18) * Math.PI / 180);
+        ctx.strokeStyle = 'rgba(255,255,255,.28)';
+        ctx.lineWidth = 1;
+        for (let line = -cellSize; line < cellSize; line += 9) {
+          ctx.beginPath();
+          ctx.moveTo(-cellSize, line);
+          ctx.lineTo(cellSize, line + 10);
+          ctx.stroke();
+        }
+        ctx.restore();
+        ctx.strokeStyle = 'rgba(0,0,0,.22)';
+        ctx.strokeRect(x + 2, y + 2, cellSize - 4, cellSize - 4);
+      }));
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.anisotropy = 8;
+      return texture;
+    };
+
+    Promise.all([import('three'), import('three/examples/jsm/controls/OrbitControls.js'), createTexture()]).then(([THREE, controlsModule, texture]) => {
+      if (disposed || !mountRef.current || !texture) return;
+      const container = mountRef.current;
+      const scene = new THREE.Scene();
+      scene.background = null;
+      const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
+      camera.position.set(4.8, 3.2, 5.8);
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      container.replaceChildren(renderer.domElement);
+
+      const length = 4.8;
+      const width = Math.max(2.2, Math.min(3.6, plan.spec.width / plan.spec.length * length));
+      const thickness = Math.max(.32, Math.min(.72, plan.spec.thickness / 70));
+      const woodSide = new THREE.MeshStandardMaterial({ color: '#835837', roughness: .74, metalness: .04 });
+      const darkSide = new THREE.MeshStandardMaterial({ color: '#553725', roughness: .82, metalness: .02 });
+      const face = new THREE.MeshStandardMaterial({ map: texture, roughness: .62, metalness: .03 });
+      const board = new THREE.Mesh(new THREE.BoxGeometry(length, thickness, width, 18, 3, 12), [woodSide, darkSide, woodSide, darkSide, face, face]);
+      board.rotation.y = -.35;
+      scene.add(board);
+
+      const bevel = new THREE.LineSegments(new THREE.EdgesGeometry(board.geometry), new THREE.LineBasicMaterial({ color: '#1b2d32', transparent: true, opacity: .45 }));
+      board.add(bevel);
+
+      const table = new THREE.Mesh(new THREE.CircleGeometry(4.8, 80), new THREE.MeshBasicMaterial({ color: '#0d171a', transparent: true, opacity: .28 }));
+      table.rotation.x = -Math.PI / 2;
+      table.position.y = -thickness / 2 - .12;
+      scene.add(table);
+
+      scene.add(new THREE.HemisphereLight('#fff8e8', '#183139', 2.2));
+      const key = new THREE.DirectionalLight('#fff4d6', 3.4);
+      key.position.set(3, 5, 4);
+      scene.add(key);
+      const rim = new THREE.DirectionalLight('#b8dd46', 1.1);
+      rim.position.set(-4, 2, -3);
+      scene.add(rim);
+
+      const controls = new controlsModule.OrbitControls(camera, renderer.domElement);
+      controls.enablePan = false;
+      controls.enableDamping = true;
+      controls.minDistance = 4.4;
+      controls.maxDistance = 8.5;
+      controls.target.set(0, 0, 0);
+
+      const resize = () => {
+        const rect = container.getBoundingClientRect();
+        renderer.setSize(rect.width, rect.height, false);
+        camera.aspect = Math.max(rect.width, 1) / Math.max(rect.height, 1);
+        camera.updateProjectionMatrix();
+      };
+      resize();
+      const observer = new ResizeObserver(resize);
+      observer.observe(container);
+
+      const animate = () => {
+        if (disposed) return;
+        controls.update();
+        renderer.render(scene, camera);
+        requestAnimationFrame(animate);
+      };
+      animate();
+      cleanup = () => {
+        observer.disconnect();
+        controls.dispose();
+        texture.dispose();
+        board.geometry.dispose();
+        face.dispose();
+        woodSide.dispose();
+        darkSide.dispose();
+        renderer.dispose();
+        renderer.domElement.remove();
+      };
+    });
+
+    return () => { disposed = true; cleanup(); };
+  }, [mode, plan]);
+
   return <section className="model-card" aria-label="Interactive 3D end-grain board model">
-    <div className="model-copy"><span className="eyebrow">ROTATABLE 3D MODEL</span><h2>Grab the board. Check the thickness.</h2><p>The generated pattern is mapped onto a physical slab so the plan feels like a board, not a spreadsheet.</p></div>
-    <div className="model-stage" onPointerDown={beginDrag} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={endDrag}>
-      <div className="board-model" style={faceStyle}>
-        <div className="model-face model-front">{plan.grid.cells.flatMap((row, rowIndex) => row.map((species, columnIndex) => <span key={`${rowIndex}-${columnIndex}`} className="model-cell" style={{ backgroundColor: plan.species[species]?.color, '--grain-angle': `${(rowIndex + columnIndex) % 2 ? 34 : -24}deg` } as React.CSSProperties} />))}</div>
-        <div className="model-face model-back" />
-        <div className="model-face model-right" />
-        <div className="model-face model-left" />
-        <div className="model-face model-top" />
-        <div className="model-face model-bottom" />
-      </div>
-      <div className="model-shadow" />
-    </div>
-    <div className="model-controls"><button onClick={() => setRotation({ x: 58, y: -34 })}>Front angle</button><button onClick={() => setRotation({ x: 68, y: 38 })}>Flip side</button><span>{plan.spec.length} × {plan.spec.width} × {plan.spec.thickness} mm</span></div>
+    <div className="model-copy"><span className="eyebrow">WEBGL ORBIT VIEWER</span><h2>Spin the board. Then cut it.</h2><p>The pattern is rendered as a physical end-grain slab with thickness, side faces and orbit controls. Switch views to inspect the top map or slice stack.</p></div>
+    <div className="viewer-tabs" role="tablist" aria-label="Board view mode">{(['webgl', 'top', 'slices'] as const).map((view) => <button key={view} className={mode === view ? 'active' : ''} onClick={() => setMode(view)}>{view === 'webgl' ? '3D orbit' : view === 'top' ? 'Top map' : 'Slice stack'}</button>)}</div>
+    {mode === 'webgl' && <div ref={mountRef} className="webgl-stage" aria-label="Three dimensional orbit viewer" />}
+    {mode === 'top' && <div className="model-alt-view"><BoardPreview plan={plan} /></div>}
+    {mode === 'slices' && <div className="slice-lab"><div className="slice-rail">{plan.production.flipMap.map((flip, index) => <i key={index} className={flip ? 'flip' : ''} style={{ background: plan.species[index % plan.species.length].color }}><span>{index + 1}</span></i>)}</div><p>{plan.production.sliceCount} slices. Flip every marked piece, rotate to end grain, then glue the final field.</p></div>}
+    <div className="model-controls"><span>{plan.spec.length} × {plan.spec.width} × {plan.spec.thickness} mm · {familyName(plan.family)}</span></div>
   </section>;
 }
 

@@ -909,3 +909,116 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 @media print {
   .intro, .plan-summary, .sheet-strip { display: none !important; }
 }
+
+.viewer-tabs {
+  position: absolute;
+  z-index: 4;
+  top: 24px;
+  right: 24px;
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.viewer-tabs button {
+  min-height: 34px;
+  border: 1px solid rgba(246,248,243,.24);
+  background: rgba(246,248,243,.08);
+  color: rgba(246,248,243,.82);
+  padding: 0 10px;
+  font: 800 9px IBM Plex Mono, monospace;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.viewer-tabs button.active {
+  background: var(--lime);
+  border-color: var(--lime);
+  color: #142226;
+}
+.webgl-stage {
+  position: absolute;
+  z-index: 2;
+  inset: 120px 20px 58px;
+  min-height: 320px;
+  border: 1px solid rgba(246,248,243,.12);
+  background:
+    radial-gradient(circle at 50% 76%, rgba(0,0,0,.26), transparent 34%),
+    radial-gradient(circle at 70% 30%, rgba(184, 221, 70, .10), transparent 28%);
+  overflow: hidden;
+  cursor: grab;
+}
+.webgl-stage:active { cursor: grabbing; }
+.webgl-stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.model-alt-view {
+  position: absolute;
+  z-index: 2;
+  inset: 120px 20px 58px;
+  overflow: auto;
+  display: grid;
+  place-items: center;
+}
+.model-alt-view .preview-card {
+  width: min(760px, 100%);
+  background: rgba(251,252,248,.97);
+  color: var(--ink);
+}
+.slice-lab {
+  position: absolute;
+  z-index: 2;
+  inset: 120px 20px 58px;
+  display: grid;
+  align-content: center;
+  gap: 20px;
+  border: 1px solid rgba(246,248,243,.12);
+  padding: 22px;
+  background: rgba(13, 23, 26, .35);
+}
+.slice-rail {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  perspective: 420px;
+  overflow-x: auto;
+  padding: 18px 4px;
+}
+.slice-rail i {
+  position: relative;
+  flex: 0 0 34px;
+  height: 116px;
+  border: 1px solid rgba(255,255,255,.26);
+  box-shadow: 0 18px 30px rgba(0,0,0,.22);
+  transform: rotateY(-26deg) skewY(-5deg);
+}
+.slice-rail i.flip {
+  transform: rotateY(26deg) skewY(5deg) translateY(10px);
+  filter: saturate(.82) brightness(.86);
+}
+.slice-rail span {
+  position: absolute;
+  left: 50%;
+  bottom: -20px;
+  transform: translateX(-50%);
+  color: rgba(246,248,243,.68);
+  font: 800 8px IBM Plex Mono, monospace;
+}
+.slice-lab p {
+  max-width: 620px;
+  margin: 0 auto;
+  color: rgba(246,248,243,.74);
+  text-align: center;
+  line-height: 1.5;
+}
+.model-card .model-controls {
+  pointer-events: none;
+}
+
+@media (max-width: 760px) {
+  .viewer-tabs { position: relative; top: auto; right: auto; padding: 0 18px; justify-content: flex-start; }
+  .webgl-stage, .model-alt-view, .slice-lab { inset: 180px 12px 74px; }
+}
