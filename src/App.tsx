@@ -20,6 +20,7 @@ const shopPresets: { label: string; spec: BoardSpec; limits: ShopLimits; family:
   { label: 'Малая мастерская', spec: { length: 360, width: 240, thickness: 38 }, limits: { sawKerf: 3.0, maxClampWidth: 280, stockLength: 800, minStripWidth: 32, machineWidth: 260 }, family: 'rail-fence', complexity: 4, riskTolerance: 'low', speciesCount: 3, seed: 'safe-shop', note: 'меньше тонких деталей, запас по струбцинам' },
   { label: 'Витринная доска', spec: { length: 520, width: 340, thickness: 45 }, limits: { sawKerf: 3.2, maxClampWidth: 420, stockLength: 1200, minStripWidth: 24, machineWidth: 360 }, family: 'split-chevron', complexity: 7, riskTolerance: 'balanced', speciesCount: 4, seed: 'showpiece', note: 'выразительный центр без фантазийных склеек' },
   { label: 'Сборка за выходные', spec: { length: 420, width: 300, thickness: 40 }, limits: { sawKerf: 3.2, maxClampWidth: 360, stockLength: 1000, minStripWidth: 30, machineWidth: 330 }, family: 'offset-brick', complexity: 5, riskTolerance: 'balanced', speciesCount: 3, seed: 'weekend', note: 'простой повтор, понятный билет, меньше сюрпризов' },
+  { label: 'Контрастный шеврон', spec: { length: 480, width: 320, thickness: 44 }, limits: { sawKerf: 3.2, maxClampWidth: 390, stockLength: 1100, minStripWidth: 26, machineWidth: 340 }, family: 'split-chevron', complexity: 8, riskTolerance: 'high', speciesCount: 4, seed: 'contrast-chevron', note: 'смелый ритм и четыре породы для акцентной доски' },
 ];
 
 const familyName = (family: PatternFamily) => families.find((item) => item.value === family)?.label ?? family;
@@ -37,7 +38,7 @@ const warningRu = (warning: BoardPlan['risk']['warnings'][number]) => ({
   clear: ['Запасы в норме', 'Модель не видит близких отказов по ограничениям.', 'Перед распилом всё равно проверь размеры на станке.'],
 } as Record<string, [string, string, string]>)[warning.code] ?? [warning.title, warning.detail, warning.fix];
 
-function NumberField({ label, value, min, max, step = 1, unit = 'mm', onChange }: { label: string; value: number; min: number; max: number; step?: number; unit?: string; onChange: (value: number) => void }) {
+function NumberField({ label, value, min, max, step = 1, unit = 'мм', onChange }: { label: string; value: number; min: number; max: number; step?: number; unit?: string; onChange: (value: number) => void }) {
   return <label className="number-field"><span>{label}</span><span className="input-shell"><input type="number" value={value} min={min} max={max} step={step} onChange={(event) => onChange(Number(event.target.value))} /><b>{unit}</b></span></label>;
 }
 
@@ -45,7 +46,7 @@ function NumberField({ label, value, min, max, step = 1, unit = 'mm', onChange }
 
 function BoardModel3D({ plan }: { plan: BoardPlan }) {
   const mountRef = useRef<HTMLDivElement | null>(null);
-  const [mode, setMode] = useState<'webgl' | 'top' | 'slices'>('webgl');
+  const [mode, setMode] = useState<'webgl' | 'top' | 'slices' | 'sheets'>('webgl');
 
   useEffect(() => {
     if (mode !== 'webgl' || !mountRef.current) return;
@@ -95,34 +96,42 @@ function BoardModel3D({ plan }: { plan: BoardPlan }) {
       const container = mountRef.current;
       const scene = new THREE.Scene();
       scene.background = null;
-      const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
-      camera.position.set(4.8, 3.2, 5.8);
+      const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 100);
+      camera.position.set(5.4, 4.4, 6.4);
       const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.08;
       container.replaceChildren(renderer.domElement);
 
       const length = 4.8;
       const width = Math.max(2.2, Math.min(3.6, plan.spec.width / plan.spec.length * length));
       const thickness = Math.max(.32, Math.min(.72, plan.spec.thickness / 70));
-      const woodSide = new THREE.MeshStandardMaterial({ color: '#835837', roughness: .74, metalness: .04 });
-      const darkSide = new THREE.MeshStandardMaterial({ color: '#553725', roughness: .82, metalness: .02 });
-      const face = new THREE.MeshStandardMaterial({ map: texture, roughness: .62, metalness: .03 });
-      const board = new THREE.Mesh(new THREE.BoxGeometry(length, thickness, width, 18, 3, 12), [woodSide, darkSide, woodSide, darkSide, face, face]);
+      const woodSide = new THREE.MeshStandardMaterial({ color: '#855538', roughness: .68, metalness: 0 });
+      const darkSide = new THREE.MeshStandardMaterial({ color: '#3b241a', roughness: .82, metalness: 0 });
+      const face = new THREE.MeshPhysicalMaterial({ map: texture, roughness: .46, clearcoat: .18, clearcoatRoughness: .72 });
+      const board = new THREE.Mesh(new THREE.BoxGeometry(length, thickness, width, 24, 3, 16), [woodSide, woodSide, face, darkSide, woodSide, woodSide]);
       board.rotation.y = -.35;
+      board.castShadow = true;
+      board.receiveShadow = true;
       scene.add(board);
 
       const bevel = new THREE.LineSegments(new THREE.EdgesGeometry(board.geometry), new THREE.LineBasicMaterial({ color: '#1b2d32', transparent: true, opacity: .45 }));
       board.add(bevel);
 
-      const table = new THREE.Mesh(new THREE.CircleGeometry(4.8, 80), new THREE.MeshBasicMaterial({ color: '#0d171a', transparent: true, opacity: .28 }));
+      const table = new THREE.Mesh(new THREE.CircleGeometry(5.6, 96), new THREE.MeshStandardMaterial({ color: '#0b1215', roughness: 1, transparent: true, opacity: .6 }));
       table.rotation.x = -Math.PI / 2;
-      table.position.y = -thickness / 2 - .12;
+      table.position.y = -thickness / 2 - .18;
+      table.receiveShadow = true;
       scene.add(table);
 
       scene.add(new THREE.HemisphereLight('#fff8e8', '#183139', 2.2));
       const key = new THREE.DirectionalLight('#fff4d6', 3.4);
       key.position.set(3, 5, 4);
+      key.castShadow = true;
       scene.add(key);
       const rim = new THREE.DirectionalLight('#b8dd46', 1.1);
       rim.position.set(-4, 2, -3);
@@ -133,7 +142,12 @@ function BoardModel3D({ plan }: { plan: BoardPlan }) {
       controls.enableDamping = true;
       controls.minDistance = 4.4;
       controls.maxDistance = 8.5;
+      controls.maxPolarAngle = Math.PI * .47;
+      controls.minPolarAngle = Math.PI * .14;
+      controls.autoRotate = true;
+      controls.autoRotateSpeed = .45;
       controls.target.set(0, 0, 0);
+      renderer.domElement.addEventListener('pointerdown', () => { controls.autoRotate = false; }, { once: true });
 
       const resize = () => {
         const rect = container.getBoundingClientRect();
@@ -157,6 +171,10 @@ function BoardModel3D({ plan }: { plan: BoardPlan }) {
         controls.dispose();
         texture.dispose();
         board.geometry.dispose();
+        bevel.geometry.dispose();
+        (bevel.material as InstanceType<typeof THREE.LineBasicMaterial>).dispose();
+        table.geometry.dispose();
+        (table.material as InstanceType<typeof THREE.MeshStandardMaterial>).dispose();
         face.dispose();
         woodSide.dispose();
         darkSide.dispose();
@@ -169,21 +187,25 @@ function BoardModel3D({ plan }: { plan: BoardPlan }) {
   }, [mode, plan]);
 
   return <section className="model-card" aria-label="Интерактивная 3D-модель торцевой доски">
-    <div className="model-copy"><span className="eyebrow">3D-ПРОСМОТР</span><h2>Покрути доску. Потом пили.</h2><p>Узор рендерится как физическая торцевая заготовка: толщина, боковые грани, свет и вращение мышью. Переключай виды, чтобы проверить карту сверху и стопку срезов.</p></div>
-    <div className="viewer-tabs" role="tablist" aria-label="Режим просмотра доски">{(['webgl', 'top', 'slices'] as const).map((view) => <button key={view} id={`tab-${view}`} role="tab" aria-selected={mode === view} aria-controls={`panel-${view}`} className={mode === view ? 'active' : ''} onClick={() => setMode(view)}>{view === 'webgl' ? '3D-модель' : view === 'top' ? 'Карта сверху' : 'Стопка срезов'}</button>)}</div>
+    <div className="model-copy"><span className="eyebrow">ЖИВАЯ МОДЕЛЬ / 3D</span><h2>Доска до первого реза.</h2><p>Проверь торцевой рисунок, толщину и пропорции. Потяни, чтобы вращать; колесо меняет масштаб.</p></div>
+    <div className="viewer-tabs" role="tablist" aria-label="Режим просмотра доски">{(['webgl', 'top', 'slices', 'sheets'] as const).map((view) => <button key={view} id={`tab-${view}`} role="tab" aria-selected={mode === view} aria-controls={`panel-${view}`} className={mode === view ? 'active' : ''} onClick={() => setMode(view)}>{view === 'webgl' ? '3D' : view === 'top' ? 'Карта торца' : view === 'slices' ? 'Пакет срезов' : 'Листы'}</button>)}</div>
     {mode === 'webgl' && <div ref={mountRef} id="panel-webgl" role="tabpanel" aria-labelledby="tab-webgl" className="webgl-stage" aria-label="Трёхмерный просмотр доски" />}
     {mode === 'top' && <div id="panel-top" role="tabpanel" aria-labelledby="tab-top" className="model-alt-view"><BoardPreview plan={plan} /></div>}
     {mode === 'slices' && <div id="panel-slices" role="tabpanel" aria-labelledby="tab-slices" className="slice-lab"><div className="slice-rail">{plan.production.flipMap.map((flip, index) => <i key={index} className={flip ? 'flip' : ''} style={{ background: plan.species[index % plan.species.length].color }}><span>{index + 1}</span></i>)}</div><p>{plan.production.sliceCount} срезов. Разверни отмеченные детали, поставь на торец и склей финальное поле.</p></div>}
-    <div className="model-controls"><span>{plan.spec.length} × {plan.spec.width} × {plan.spec.thickness} мм · {familyName(plan.family)}</span></div>
+    {mode === 'sheets' && <div id="panel-sheets" role="tabpanel" aria-labelledby="tab-sheets" className="model-sheet-view"><article><span>01</span><b>Чертёж</b><small>{plan.spec.length} × {plan.spec.width} мм</small></article><article><span>02</span><b>Карта распила</b><small>{plan.production.cutCount} резов</small></article><article><span>03</span><b>Сборка</b><small>{plan.production.glueUps} склеек</small></article></div>}
+    <div className="model-controls"><span className="orbit-hint">↻ вращать · ± масштаб</span><span>{plan.spec.length} × {plan.spec.width} × {plan.spec.thickness} мм · {familyName(plan.family)}</span></div>
   </section>;
 }
 
 function SheetCards({ plan }: { plan: BoardPlan }) {
   const firstПанель = plan.production.panels[0];
-  return <section id="project-sheets" className="sheet-strip" aria-label="Печатные листы проекта">
-    <article><span>Лист 01</span><h3>Чертёж</h3><p>Размерная карта доски и исходный блок до поперечного распила.</p><div className="mini-drawing"><i /> <b>{plan.spec.length} мм</b></div></article>
-    <article><span>Лист 02</span><h3>Материал и рез</h3><p>{format(plan.production.stockLengthNeeded / 1000, 2)} м заготовки, {format(plan.materials.wastePercent, 1)}% потерь на пропил, ${format(plan.materials.totalCost, 2)} оценка материала.</p><div className="mini-bars">{firstПанель?.strips.map((strip, index) => <i key={index} style={{ flexGrow: strip.width, background: plan.species[strip.species]?.color }} />)}</div></article>
-    <article><span>Лист 03</span><h3>Карта сборки</h3><p>{plan.production.sliceCount} срезов, {plan.production.flipMap.filter(Boolean).length} переворотов, {plan.production.glueUps} склеек.</p><div className="mini-slices">{plan.production.flipMap.slice(0, 10).map((flip, index) => <i key={index} className={flip ? 'flip' : ''} />)}</div></article>
+  return <section id="project-sheets" className="sheet-section" aria-label="Печатные листы проекта">
+    <header className="sheet-section-title"><div><span className="eyebrow">КОМПЛЕКТ МАСТЕРА</span><h2>Три листа — от идеи до склейки</h2></div><p>Размеры, закупка и порядок деталей собраны в один печатный проект.</p></header>
+    <div className="sheet-strip">
+      <article><div className="sheet-head"><span>Лист 01</span><b>М 1:5</b></div><h3>Габаритный чертёж</h3><div className="sheet-drawing"><div className="drawing-board" /><i className="dim-x">{plan.spec.length} мм</i><i className="dim-y">{plan.spec.width} мм</i></div><footer><span>Толщина</span><b>{plan.spec.thickness} мм</b><span>Узор</span><b>{familyName(plan.family)}</b></footer></article>
+      <article><div className="sheet-head"><span>Лист 02</span><b>ВЕДОМОСТЬ</b></div><h3>Закупка и распил</h3><div className="mini-bars">{firstПанель?.strips.map((strip, index) => <i key={index} style={{ flexGrow: strip.width, background: plan.species[strip.species]?.color }} />)}</div><div className="sheet-stats"><span>Заготовка <b>{format(plan.production.stockLengthNeeded / 1000, 2)} м</b></span><span>Резы <b>{plan.production.cutCount}</b></span><span>Пропил <b>{plan.limits.sawKerf} мм</b></span></div><footer><span>Потери</span><b>{format(plan.materials.wastePercent, 1)}%</b><span>Объём</span><b>{format(plan.materials.lines.reduce((sum, line) => sum + line.volumeLiters, 0), 2)} л</b></footer></article>
+      <article><div className="sheet-head"><span>Лист 03</span><b>ПОРЯДОК</b></div><h3>Карта сборки</h3><div className="mini-slices">{plan.production.flipMap.slice(0, 12).map((flip, index) => <i key={index} className={flip ? 'flip' : ''}><small>{index + 1}</small></i>)}</div><div className="assembly-route"><span>Распустить</span><i>→</i><span>Склеить</span><i>→</i><span>Развернуть</span></div><footer><span>Срезов</span><b>{plan.production.sliceCount}</b><span>Склеек</span><b>{plan.production.glueUps}</b></footer></article>
+    </div>
   </section>;
 }
 
@@ -193,7 +215,7 @@ function PlanSummary({ plan }: { plan: BoardPlan }) {
     <article><span>Риск</span><b>{plan.risk.score}</b><small>{riskLevelRu(plan.risk.level)} риск</small></article>
     <article><span>Срезы</span><b>{plan.production.sliceCount}</b><small>{plan.production.cutCount} резов всего</small></article>
     <article><span>Отход</span><b>{format(plan.materials.wastePercent, 1)}%</b><small>{format(plan.production.kerfLoss, 1)} мм на пропил</small></article>
-    <article><span>Билет</span><b>{warnings || 'ГОТОВО'}</b><small>{warnings ? 'нужно закрыть' : 'готово к сухой сборке'}</small></article>
+    <article><span>Проверка</span><b>{warnings || 'ГОТОВО'}</b><small>{warnings ? 'замечаний к плану' : 'к сухой сборке'}</small></article>
   </section>;
 }
 
@@ -242,8 +264,8 @@ function Compiler({ plan }: { plan: BoardPlan }) {
 export function MakerTicket({ plan }: { plan: BoardPlan }) {
   return <section id="ticket" className="maker-ticket" data-testid="maker-ticket">
     <header><div><span>EDGEBOARD LAB / ЛИСТ МАСТЕРА</span><h1>{familyName(plan.family)}</h1></div><b>ПЛАН #{plan.seed.slice(0, 8).toUpperCase()}</b></header>
-    <div className="ticket-summary"><div><small>ГОТОВЫЙ РАЗМЕР</small><strong>{plan.spec.length} × {plan.spec.width} × {plan.spec.thickness} мм</strong></div><div><small>РИСК-СКОР</small><strong>{plan.risk.score} / 100 - {riskLevelRu(plan.risk.level)}</strong></div><div><small>ПРОПИЛ ПИЛЫ</small><strong>{plan.limits.sawKerf} мм</strong></div></div>
-    <h2>Материал</h2><table><thead><tr><th>Порода</th><th>Объём</th><th>Доля длины</th><th>Оценка</th></tr></thead><tbody>{plan.materials.lines.map((line) => <tr key={line.species}><td>{plan.species[line.species].name}</td><td>{format(line.volumeLiters, 2)} л</td><td>{format(line.stockLength / 1000, 2)} м</td><td>${format(line.estimatedCost, 2)}</td></tr>)}</tbody></table>
+    <div className="ticket-summary"><div><small>ГОТОВЫЙ РАЗМЕР</small><strong>{plan.spec.length} × {plan.spec.width} × {plan.spec.thickness} мм</strong></div><div><small>ОЦЕНКА РИСКА</small><strong>{plan.risk.score} / 100 — {riskLevelRu(plan.risk.level)}</strong></div><div><small>ПРОПИЛ ПИЛЫ</small><strong>{plan.limits.sawKerf} мм</strong></div></div>
+    <h2>Материал</h2><table><thead><tr><th>Порода</th><th>Объём</th><th>Доля длины</th><th>Оценка</th></tr></thead><tbody>{plan.materials.lines.map((line) => <tr key={line.species}><td>{plan.species[line.species].name}</td><td>{format(line.volumeLiters, 2)} л</td><td>{format(line.stockLength / 1000, 2)} м</td><td>{format(line.estimatedCost, 2)} у. е.</td></tr>)}</tbody></table>
     <h2>Порядок реза</h2><ol><li>Распусти и промаркируй рейки для {plan.production.panels.length} типов панелей.</li><li>Склей панели первого этапа и проверь ширину до затяжки струбцин.</li><li>Нарежь {plan.production.sliceCount} поперечных срезов и сохрани их порядок.</li><li>Поставь каждый срез на торец; переверни позиции {plan.production.flipMap.map((flip, index) => flip ? index + 1 : null).filter(Boolean).join(', ') || 'нет'}.</li><li>Сделай сухую сборку, склей финальное поле и выведи толщину {plan.spec.thickness} мм.</li></ol>
     <h2>Схема панели</h2><div className="ticket-diagram">{plan.grid.cells.flat().map((species, index) => <i key={index} style={{ background: plan.species[species]?.color }} />)}</div>
     <h2>Предупреждения по риску</h2><ul>{plan.risk.warnings.map((warning) => <li key={warning.code}><b>{warningRu(warning)[0]}:</b> {warningRu(warning)[2]}</li>)}</ul>
@@ -284,12 +306,12 @@ export default function App() {
   return <div className="app-root" data-theme={theme}>
     <header className="app-header"><div className="brand-mark">EB<span>+</span></div><div className="brand"><h1>EdgeBoard Lab</h1><p>Генератор реализуемых торцевых досок от ограничений мастерской.</p></div><nav className="header-meta" aria-label="Действия проекта"><span>ВЕРСТАК / {new Date().getFullYear()}</span><a href="#project-sheets">Листы проекта</a><button className="theme-toggle" title="Переключить светлую/тёмную тему" onClick={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}>{theme === 'dark' ? 'Тема: тёмная' : 'Тема: светлая'}</button><button onClick={() => window.print()}>Печать <b>Ctrl/⌘P</b></button></nav></header>
     <section className="intro">
-      <div className="intro-copy"><span className="eyebrow">ГЕНЕРАТОР ТОРЦЕВЫХ ДОСОК</span><h1>Собери узор. Докажи сборку.</h1><p>EdgeBoard Lab превращает пропил, ширину струбцин, длину заготовки и безопасную ламель в производственный план торцевой доски: узор, панели, срезы, отчёт рисков и печатный лист мастера.</p><div className="intro-actions"><button onClick={regenerate}>Новый план</button><button className="ghost" onClick={() => window.print()}>Печать листа</button></div></div>
+      <div className="intro-copy"><span className="eyebrow">ТОРЦЕВАЯ ДОСКА / ОТ УЗОРА ДО СТАНКА</span><h1>Спроектируй.<br /><em>Потом пили.</em></h1><p>Интерактивная доска, раскрой и проверка мастерской в одном проекте. Реальные размеры, понятная сборка, никакой геометрии «на глаз».</p><div className="intro-actions"><button onClick={regenerate}>Создать новый узор <b>↗</b></button><a className="ghost" href="#workbench">Открыть верстак ↓</a></div><div className="hero-proof"><span><b>{families.length}</b> семейств узора</span><span><b>{plan.risk.score}/100</b> оценка риска</span><span><b>3</b> листа проекта</span></div></div>
       <div className="intro-board" aria-label="3D-превью выбранной доски"><BoardModel3D plan={plan} /></div>
     </section>
     <PlanSummary plan={plan} />
     <SheetCards plan={plan} />
-    <main className="app-shell">
+    <main className="app-shell" id="workbench">
       <aside className="controls">
         <div className="controls-title"><span className="eyebrow">ВХОДНЫЕ ДАННЫЕ</span><h2>Ограничения мастерской</h2><p>Начни с профиля мастерской и настрой лимиты. Дизайн меняется до того, как опасный рез дошёл до пилы.</p></div>
         <div className="preset-grid">{shopPresets.map((preset) => <button key={preset.label} onClick={() => applyPreset(preset)}><b>{preset.label}</b><span>{preset.note}</span></button>)}</div>
@@ -298,7 +320,7 @@ export default function App() {
         <fieldset><legend>03 / Протокол узора</legend><label className="select-field"><span>Семейство узора</span><select value={family} onChange={(event) => { setSafeOverride(null); setFamily(event.target.value as PatternFamily); }}><>{families.map((item) => <option key={item.value} value={item.value}>{item.label} - {item.note}</option>)}</></select></label><div className="range-field"><div><span>Сложность</span><b>{complexity} / 10</b></div><input type="range" min="1" max="10" value={complexity} onChange={(event) => { setSafeOverride(null); setComplexity(Number(event.target.value)); }} /></div><label className="select-field"><span>Количество пород</span><select value={speciesCount} onChange={(event) => { setSafeOverride(null); setSpeciesCount(Number(event.target.value)); }}>{defaultSpecies.slice(1).map((_, index) => <option key={index + 2} value={index + 2}>{index + 2} породы</option>)}</select></label><div className="tolerance"><span>Допуск риска</span><div>{(['low', 'balanced', 'high'] as RiskTolerance[]).map((value) => <button key={value} className={riskTolerance === value ? 'active' : ''} onClick={() => { setSafeOverride(null); setRiskTolerance(value); }}>{toleranceRu(value)}</button>)}</div></div><label className="seed-field"><span>Ключ генерации</span><input value={seed} onChange={(event) => { setSafeOverride(null); setSeed(event.target.value); }} /><button onClick={regenerate} title="Новая версия">↻</button></label></fieldset>
         <button className="generate-button" onClick={regenerate}><span>Сгенерировать рабочий план</span><b>→</b></button>
       </aside>
-      <div className="workspace"><div className="workspace-bar"><div><span className="pulse" />ОГРАНИЧЕНИЯ СОБРАНЫ</div><span>{familyName(plan.family)} / {plan.grid.cells.length} × {plan.grid.cells[0].length} МОДУЛЕЙ</span></div><div className="dashboard-grid"><BoardPreview plan={plan} /><RiskCard plan={plan} onSafer={() => setSafeOverride(createSaferPlan(plan))} /><Compiler plan={plan} /><section className="instrument material-card"><div className="section-heading"><div><span className="eyebrow">ВЕДОМОСТЬ МАТЕРИАЛА</span><h2>Оценка закупки</h2></div><b>${format(plan.materials.totalCost, 2)}</b></div>{plan.materials.lines.map((line) => <div className="material-row" key={line.species}><i style={{ background: plan.species[line.species].color }} /><span>{plan.species[line.species].name}<small>{format(line.volumeLiters, 2)} л / {format(line.stockLength / 1000, 2)} м доля</small></span><b>${format(line.estimatedCost, 2)}</b></div>)}<div className="waste"><span>Потери на пропил</span><b>{format(plan.materials.wastePercent, 1)}%</b></div></section></div></div>
+      <div className="workspace"><div className="workspace-bar"><div><span className="pulse" />ОГРАНИЧЕНИЯ СОБРАНЫ</div><span>{familyName(plan.family)} / {plan.grid.cells.length} × {plan.grid.cells[0].length} МОДУЛЕЙ</span></div><div className="dashboard-grid"><BoardPreview plan={plan} /><RiskCard plan={plan} onSafer={() => setSafeOverride(createSaferPlan(plan))} /><Compiler plan={plan} /><section className="instrument material-card"><div className="section-heading"><div><span className="eyebrow">ВЕДОМОСТЬ МАТЕРИАЛА</span><h2>Оценка закупки</h2></div><b>{format(plan.materials.totalCost, 2)} у. е.</b></div>{plan.materials.lines.map((line) => <div className="material-row" key={line.species}><i style={{ background: plan.species[line.species].color }} /><span>{plan.species[line.species].name}<small>{format(line.volumeLiters, 2)} л / {format(line.stockLength / 1000, 2)} м доля</small></span><b>{format(line.estimatedCost, 2)} у. е.</b></div>)}<div className="waste"><span>Потери на пропил</span><b>{format(plan.materials.wastePercent, 1)}%</b></div></section></div></div>
     </main>
     <MakerTicket plan={plan} />
   </div>;
