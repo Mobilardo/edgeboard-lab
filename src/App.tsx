@@ -16,11 +16,28 @@ const families: { value: PatternFamily; label: string; note: string }[] = [
 const initialSpec: BoardSpec = { length: 460, width: 310, thickness: 42 };
 const initialLimits: ShopLimits = { sawKerf: 3.2, maxClampWidth: 380, stockLength: 1000, minStripWidth: 28, machineWidth: 330 };
 
+const shopPresets: { label: string; spec: BoardSpec; limits: ShopLimits; family: PatternFamily; complexity: number; riskTolerance: RiskTolerance; speciesCount: number; seed: string; note: string }[] = [
+  { label: 'Small shop safe', spec: { length: 360, width: 240, thickness: 38 }, limits: { sawKerf: 3.0, maxClampWidth: 280, stockLength: 800, minStripWidth: 32, machineWidth: 260 }, family: 'rail-fence', complexity: 4, riskTolerance: 'low', speciesCount: 3, seed: 'safe-shop', note: 'fewer thin parts, narrow clamp window' },
+  { label: 'Showpiece board', spec: { length: 520, width: 340, thickness: 45 }, limits: { sawKerf: 3.2, maxClampWidth: 420, stockLength: 1200, minStripWidth: 24, machineWidth: 360 }, family: 'split-chevron', complexity: 7, riskTolerance: 'balanced', speciesCount: 4, seed: 'showpiece', note: 'strong center motion with realistic glue-ups' },
+  { label: 'Fast weekend build', spec: { length: 420, width: 300, thickness: 40 }, limits: { sawKerf: 3.2, maxClampWidth: 360, stockLength: 1000, minStripWidth: 30, machineWidth: 330 }, family: 'offset-brick', complexity: 5, riskTolerance: 'balanced', speciesCount: 3, seed: 'weekend', note: 'simple repeat, clean ticket, low surprise factor' },
+];
+
 const familyName = (family: PatternFamily) => families.find((item) => item.value === family)?.label ?? family;
 const format = (value: number, digits = 0) => value.toFixed(digits);
 
 function NumberField({ label, value, min, max, step = 1, unit = 'mm', onChange }: { label: string; value: number; min: number; max: number; step?: number; unit?: string; onChange: (value: number) => void }) {
   return <label className="number-field"><span>{label}</span><span className="input-shell"><input type="number" value={value} min={min} max={max} step={step} onChange={(event) => onChange(Number(event.target.value))} /><b>{unit}</b></span></label>;
+}
+
+
+function PlanSummary({ plan }: { plan: BoardPlan }) {
+  const warnings = plan.risk.warnings.length;
+  return <section className="plan-summary" aria-label="Plan summary">
+    <article><span>Risk</span><b>{plan.risk.score}</b><small>{plan.risk.level} confidence</small></article>
+    <article><span>Slices</span><b>{plan.production.sliceCount}</b><small>{plan.production.cutCount} total cuts</small></article>
+    <article><span>Waste</span><b>{format(plan.materials.wastePercent, 1)}%</b><small>{format(plan.production.kerfLoss, 1)} mm kerf model</small></article>
+    <article><span>Ticket</span><b>{warnings || 'OK'}</b><small>{warnings ? 'warnings to resolve' : 'ready for dry-fit'}</small></article>
+  </section>;
 }
 
 function BoardPreview({ plan }: { plan: BoardPlan }) {
@@ -66,7 +83,7 @@ function Compiler({ plan }: { plan: BoardPlan }) {
 }
 
 export function MakerTicket({ plan }: { plan: BoardPlan }) {
-  return <section className="maker-ticket" data-testid="maker-ticket">
+  return <section id="ticket" className="maker-ticket" data-testid="maker-ticket">
     <header><div><span>EDGEBOARD LAB / MAKER TICKET</span><h1>{familyName(plan.family)}</h1></div><b>PLAN #{plan.seed.slice(0, 8).toUpperCase()}</b></header>
     <div className="ticket-summary"><div><small>FINAL DIMENSIONS</small><strong>{plan.spec.length} × {plan.spec.width} × {plan.spec.thickness} mm</strong></div><div><small>RISK SCORE</small><strong>{plan.risk.score} / 100 - {plan.risk.level}</strong></div><div><small>SAW KERF</small><strong>{plan.limits.sawKerf} mm</strong></div></div>
     <h2>Material list</h2><table><thead><tr><th>Species</th><th>Volume</th><th>Stock length share</th><th>Estimate</th></tr></thead><tbody>{plan.materials.lines.map((line) => <tr key={line.species}><td>{plan.species[line.species].name}</td><td>{format(line.volumeLiters, 2)} L</td><td>{format(line.stockLength / 1000, 2)} m</td><td>${format(line.estimatedCost, 2)}</td></tr>)}</tbody></table>
@@ -93,12 +110,29 @@ export default function App() {
   const updateSpec = (key: keyof BoardSpec, value: number) => { setSafeOverride(null); setSpec((current) => ({ ...current, [key]: value })); };
   const updateLimits = (key: keyof ShopLimits, value: number) => { setSafeOverride(null); setLimits((current) => ({ ...current, [key]: value })); };
   const regenerate = () => { setSafeOverride(null); setRevision((value) => value + 1); };
+  const applyPreset = (preset: typeof shopPresets[number]) => {
+    setSafeOverride(null);
+    setSpec(preset.spec);
+    setLimits(preset.limits);
+    setFamily(preset.family);
+    setComplexity(preset.complexity);
+    setRiskTolerance(preset.riskTolerance);
+    setSpeciesCount(preset.speciesCount);
+    setSeed(preset.seed);
+    setRevision((value) => value + 1);
+  };
 
   return <>
-    <header className="app-header"><div className="brand-mark">EB<span>+</span></div><div className="brand"><h1>EdgeBoard Lab</h1><p>Generate buildable end-grain boards from your shop limits.</p></div><div className="header-meta"><span>WORKBENCH / {new Date().getFullYear()}</span><button onClick={() => window.print()}>Print maker ticket <b>⌘P</b></button></div></header>
+    <header className="app-header"><div className="brand-mark">EB<span>+</span></div><div className="brand"><h1>EdgeBoard Lab</h1><p>Constraint-first generator for buildable end-grain boards.</p></div><nav className="header-meta" aria-label="Project actions"><span>WORKBENCH / {new Date().getFullYear()}</span><a href="#ticket">Maker ticket</a><button onClick={() => window.print()}>Print <b>⌘P</b></button></nav></header>
+    <section className="intro">
+      <div className="intro-copy"><span className="eyebrow">CONSTRAINT-FIRST BOARD GENERATOR</span><h1>Design the face. Prove the build.</h1><p>EdgeBoard Lab turns saw kerf, clamp capacity, stock length and safe strip width into a manufacturable end-grain cutting board plan: pattern, panels, slices, risk report and print-ready maker ticket.</p><div className="intro-actions"><button onClick={regenerate}>Generate new plan</button><button className="ghost" onClick={() => window.print()}>Print ticket</button></div></div>
+      <div className="intro-board" aria-label="Selected board preview"><BoardPreview plan={plan} /></div>
+    </section>
+    <PlanSummary plan={plan} />
     <main className="app-shell">
       <aside className="controls">
-        <div className="controls-title"><span className="eyebrow">INPUT ARRAY</span><h2>Shop constraints</h2><p>Define the hard limits. The plan adapts before you cut.</p></div>
+        <div className="controls-title"><span className="eyebrow">INPUT ARRAY</span><h2>Shop constraints</h2><p>Start with a shop profile, then tune the limits. The design changes before a risky cut reaches the saw.</p></div>
+        <div className="preset-grid">{shopPresets.map((preset) => <button key={preset.label} onClick={() => applyPreset(preset)}><b>{preset.label}</b><span>{preset.note}</span></button>)}</div>
         <fieldset><legend>01 / Final board</legend><div className="field-grid"><NumberField label="Length" value={spec.length} min={200} max={900} onChange={(v) => updateSpec('length', v)} /><NumberField label="Width" value={spec.width} min={150} max={600} onChange={(v) => updateSpec('width', v)} /><NumberField label="Thickness" value={spec.thickness} min={25} max={80} onChange={(v) => updateSpec('thickness', v)} /></div></fieldset>
         <fieldset><legend>02 / Machine envelope</legend><div className="field-grid"><NumberField label="Saw kerf" value={limits.sawKerf} min={1} max={8} step={0.1} onChange={(v) => updateLimits('sawKerf', v)} /><NumberField label="Clamp width" value={limits.maxClampWidth} min={100} max={1000} onChange={(v) => updateLimits('maxClampWidth', v)} /><NumberField label="Stock length" value={limits.stockLength} min={300} max={4000} onChange={(v) => updateLimits('stockLength', v)} /><NumberField label="Safe strip" value={limits.minStripWidth} min={10} max={80} onChange={(v) => updateLimits('minStripWidth', v)} /><NumberField label="Planer / sander" value={limits.machineWidth} min={100} max={1000} onChange={(v) => updateLimits('machineWidth', v)} /></div></fieldset>
         <fieldset><legend>03 / Pattern protocol</legend><label className="select-field"><span>Pattern family</span><select value={family} onChange={(event) => { setSafeOverride(null); setFamily(event.target.value as PatternFamily); }}><>{families.map((item) => <option key={item.value} value={item.value}>{item.label} - {item.note}</option>)}</></select></label><div className="range-field"><div><span>Complexity</span><b>{complexity} / 10</b></div><input type="range" min="1" max="10" value={complexity} onChange={(event) => { setSafeOverride(null); setComplexity(Number(event.target.value)); }} /></div><label className="select-field"><span>Species count</span><select value={speciesCount} onChange={(event) => { setSafeOverride(null); setSpeciesCount(Number(event.target.value)); }}>{defaultSpecies.slice(1).map((_, index) => <option key={index + 2} value={index + 2}>{index + 2} species</option>)}</select></label><div className="tolerance"><span>Risk tolerance</span><div>{(['low', 'balanced', 'high'] as RiskTolerance[]).map((value) => <button key={value} className={riskTolerance === value ? 'active' : ''} onClick={() => { setSafeOverride(null); setRiskTolerance(value); }}>{value}</button>)}</div></div><label className="seed-field"><span>Seed</span><input value={seed} onChange={(event) => { setSafeOverride(null); setSeed(event.target.value); }} /><button onClick={regenerate} title="New deterministic revision">↻</button></label></fieldset>
