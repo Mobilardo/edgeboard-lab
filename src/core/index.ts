@@ -5,10 +5,10 @@ import { calculateRisk } from './risk';
 import type { BoardPlan, BoardSpec, GeneratorOptions, ShopLimits, Species } from './types';
 
 export const defaultSpecies: Species[] = [
-  { id: 'maple', name: 'Hard maple', color: '#d9bd83', costPerLiter: 4.8, movement: 0.42 },
-  { id: 'walnut', name: 'Black walnut', color: '#5b3a2a', costPerLiter: 7.2, movement: 0.3 },
-  { id: 'cherry', name: 'Cherry', color: '#a95f3f', costPerLiter: 5.9, movement: 0.36 },
-  { id: 'ash', name: 'Ash', color: '#cda96b', costPerLiter: 4.2, movement: 0.48 },
+  { id: 'maple', name: 'Твёрдый клён', color: '#d9bd83', costPerLiter: 4.8, movement: 0.42 },
+  { id: 'walnut', name: 'Чёрный орех', color: '#5b3a2a', costPerLiter: 7.2, movement: 0.3 },
+  { id: 'cherry', name: 'Вишня', color: '#a95f3f', costPerLiter: 5.9, movement: 0.36 },
+  { id: 'ash', name: 'Ясень', color: '#cda96b', costPerLiter: 4.2, movement: 0.48 },
 ];
 
 export function createBoardPlan(

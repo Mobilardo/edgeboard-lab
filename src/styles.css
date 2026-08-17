@@ -5,6 +5,7 @@
   background: #eef1ed;
   font-family: Manrope, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-synthesis: none;
+  color-scheme: light;
   --ink: #172126;
   --muted: #66737a;
   --faint: #8b9799;
@@ -12,6 +13,10 @@
   --line-strong: #aeb9b5;
   --paper: #fbfcf8;
   --panel: #f6f8f3;
+  --surface-alpha: rgba(251, 252, 248, .94);
+  --controls-alpha: rgba(251, 252, 248, .72);
+  --body-bg: #eef1ed;
+  --grid-line: rgba(31, 95, 130, .045);
   --blue: #1f5f82;
   --blue-soft: #dfecee;
   --lime: #b8dd46;
@@ -20,16 +25,39 @@
   --shadow: 0 18px 50px rgba(31, 60, 72, .10);
 }
 
+:root[data-theme="dark"] {
+  color: #edf3ee;
+  background: #080d10;
+  color-scheme: dark;
+  --ink: #edf3ee;
+  --muted: #a3b0b3;
+  --faint: #768488;
+  --line: #26363b;
+  --line-strong: #34484f;
+  --paper: #11191d;
+  --panel: #0c1316;
+  --surface-alpha: rgba(13, 20, 23, .94);
+  --controls-alpha: rgba(12, 19, 22, .78);
+  --body-bg: #080d10;
+  --grid-line: rgba(184, 221, 70, .055);
+  --blue: #75c7e4;
+  --blue-soft: #142b33;
+  --lime: #c8f05c;
+  --amber: #f1b84c;
+  --red: #ff806f;
+  --shadow: 0 24px 70px rgba(0, 0, 0, .38);
+}
+
 * { box-sizing: border-box; }
-html { background: #eef1ed; }
+html { background: var(--body-bg); }
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100dvh;
   background:
-    linear-gradient(rgba(31, 95, 130, .045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(31, 95, 130, .045) 1px, transparent 1px),
-    #eef1ed;
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
+    var(--body-bg);
   background-size: 28px 28px;
 }
 button, input, select { font: inherit; }
@@ -43,7 +71,7 @@ button:active { transform: translateY(1px); }
   gap: 14px;
   padding: 14px clamp(18px, 3vw, 40px);
   border-bottom: 1px solid var(--line-strong);
-  background: rgba(251, 252, 248, .94);
+  background: var(--surface-alpha);
   backdrop-filter: blur(14px);
   position: sticky;
   top: 0;
@@ -82,7 +110,7 @@ button:active { transform: translateY(1px); }
   font: 700 10px IBM Plex Mono, monospace;
   text-transform: uppercase;
   letter-spacing: .04em;
-  box-shadow: 0 8px 18px rgba(23, 33, 38, .16);
+  box-shadow: var(--shadow);
 }
 .header-meta button b { color: var(--lime); margin-left: 10px; }
 
@@ -96,7 +124,7 @@ button:active { transform: translateY(1px); }
 .controls {
   min-width: 0;
   padding: 28px 24px 42px;
-  background: rgba(251, 252, 248, .72);
+  background: var(--controls-alpha);
   border-right: 1px solid var(--line-strong);
 }
 .eyebrow {
@@ -129,7 +157,7 @@ fieldset {
 }
 legend {
   padding-right: 10px;
-  color: #536168;
+  color: var(--muted);
   font: 700 10px IBM Plex Mono, monospace;
   letter-spacing: .05em;
 }
@@ -149,7 +177,7 @@ legend {
 .select-field {
   display: grid;
   gap: 6px;
-  color: #5d6970;
+  color: var(--muted);
   font: 700 10px IBM Plex Mono, monospace;
   text-transform: uppercase;
 }
@@ -158,7 +186,7 @@ legend {
   align-items: center;
   min-width: 0;
   height: 42px;
-  background: #fff;
+  background: var(--paper);
   border: 1px solid var(--line);
 }
 .input-shell input {
@@ -191,7 +219,7 @@ legend {
   width: 100%;
   min-width: 0;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--paper);
   color: var(--ink);
   padding: 11px 10px;
   outline: 0;
@@ -201,7 +229,7 @@ legend {
 .range-field div {
   display: flex;
   justify-content: space-between;
-  color: #5d6970;
+  color: var(--muted);
   font: 700 10px IBM Plex Mono, monospace;
   text-transform: uppercase;
 }
@@ -209,7 +237,7 @@ legend {
 .range-field input { width: 100%; margin-top: 10px; accent-color: var(--blue); }
 .tolerance > span,
 .seed-field > span {
-  color: #5d6970;
+  color: var(--muted);
   font: 700 10px IBM Plex Mono, monospace;
   text-transform: uppercase;
 }
@@ -221,7 +249,7 @@ legend {
 .tolerance button {
   min-height: 38px;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--paper);
   color: var(--ink);
   font: 700 10px IBM Plex Mono, monospace;
   text-transform: uppercase;
@@ -237,7 +265,7 @@ legend {
 .seed-field button {
   border: 1px solid var(--line);
   border-left: 0;
-  background: #fff;
+  background: var(--paper);
   color: var(--blue);
   font: 700 16px IBM Plex Mono, monospace;
 }
@@ -293,7 +321,7 @@ legend {
 .instrument {
   min-width: 0;
   overflow: hidden;
-  background: rgba(251, 252, 248, .96);
+  background: var(--surface-alpha);
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
   padding: 20px;
@@ -350,7 +378,7 @@ legend {
   background: #22363c;
   border: 7px solid #22363c;
   padding: 2px;
-  box-shadow: 0 14px 26px rgba(23, 33, 38, .18);
+  box-shadow: var(--shadow);
   overflow: hidden;
 }
 .grain-cell { position: relative; min-width: 0; min-height: 18px; overflow: hidden; }
@@ -401,8 +429,8 @@ legend {
   display: grid;
   grid-template-columns: 24px minmax(0, 1fr);
   gap: 10px;
-  background: #fff;
-  border: 1px solid #d4dad6;
+  background: var(--paper);
+  border: 1px solid var(--line);
   padding: 11px;
 }
 .warning-mark {
@@ -474,7 +502,7 @@ legend {
   grid-template-columns: 58px 70px minmax(0, 1fr);
   align-items: center;
   min-height: 34px;
-  border-bottom: 1px solid #d6dcd7;
+  border-bottom: 1px solid var(--line);
   column-gap: 10px;
   font: 700 10px IBM Plex Mono, monospace;
 }
@@ -495,7 +523,7 @@ legend {
   grid-template-columns: 12px minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
-  border-bottom: 1px solid #d6dcd7;
+  border-bottom: 1px solid var(--line);
   padding: 12px 0;
 }
 .material-row > i { width: 12px; height: 30px; border: 1px solid rgba(0,0,0,.18); }
@@ -585,7 +613,7 @@ legend {
 .intro-copy h1 {
   max-width: 780px;
   margin: 0;
-  color: #111b1f;
+  color: var(--ink);
   font-size: clamp(48px, 7vw, 112px);
   line-height: .86;
   letter-spacing: -.085em;
@@ -594,7 +622,7 @@ legend {
 .intro-copy p {
   max-width: 680px;
   margin: 22px 0 0;
-  color: #526068;
+  color: var(--muted);
   font-size: clamp(16px, 1.55vw, 20px);
   line-height: 1.55;
 }
@@ -613,10 +641,10 @@ legend {
   font: 800 11px IBM Plex Mono, monospace;
   text-transform: uppercase;
   letter-spacing: .055em;
-  box-shadow: 0 12px 28px rgba(23, 33, 38, .18);
+  box-shadow: var(--shadow);
 }
 .intro-actions button.ghost {
-  background: #fff;
+  background: var(--paper);
   color: var(--blue);
   border: 1px solid var(--line-strong);
   box-shadow: none;
@@ -629,7 +657,7 @@ legend {
   content: '';
   position: absolute;
   inset: 18px -10px -10px 22px;
-  background: #dbe6df;
+  background: var(--blue-soft);
   z-index: -1;
   clip-path: polygon(0 0, 92% 0, 100% 16%, 100% 100%, 0 100%);
 }
@@ -653,10 +681,10 @@ legend {
   min-width: 0;
   display: grid;
   gap: 5px;
-  background: rgba(251, 252, 248, .9);
+  background: var(--surface-alpha);
   border: 1px solid var(--line);
   padding: 15px 16px;
-  box-shadow: 0 10px 28px rgba(31, 60, 72, .07);
+  box-shadow: var(--shadow);
 }
 .plan-summary span {
   color: var(--muted);
@@ -670,7 +698,7 @@ legend {
   line-height: .95;
   font-variant-numeric: tabular-nums;
 }
-.plan-summary small { color: #66737a; font-size: 12px; line-height: 1.35; }
+.plan-summary small { color: var(--muted); font-size: 12px; line-height: 1.35; }
 
 .preset-grid {
   display: grid;
@@ -681,7 +709,7 @@ legend {
   width: 100%;
   min-width: 0;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--paper);
   color: var(--ink);
   padding: 11px 12px;
   text-align: left;
@@ -689,7 +717,7 @@ legend {
   gap: 4px;
   transition: border-color .18s ease, transform .18s ease, background .18s ease;
 }
-.preset-grid button:hover { border-color: var(--blue); background: #f4f9f8; transform: translateY(-1px); }
+.preset-grid button:hover { border-color: var(--blue); background: var(--blue-soft); transform: translateY(-1px); }
 .preset-grid b { font-size: 12px; }
 .preset-grid span { color: var(--muted); font-size: 11px; line-height: 1.35; }
 
@@ -865,9 +893,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .sheet-strip article {
   min-width: 0;
   min-height: 188px;
-  background: #fbfcf8;
+  background: var(--paper);
   border: 1px solid var(--line);
-  box-shadow: 0 14px 32px rgba(31, 60, 72, .08);
+  box-shadow: var(--shadow);
   padding: 17px;
   display: grid;
   align-content: space-between;
@@ -963,7 +991,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 .model-alt-view .preview-card {
   width: min(760px, 100%);
-  background: rgba(251,252,248,.97);
+  background: var(--surface-alpha);
   color: var(--ink);
 }
 .slice-lab {
@@ -1021,4 +1049,81 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 @media (max-width: 760px) {
   .viewer-tabs { position: relative; top: auto; right: auto; padding: 0 18px; justify-content: flex-start; }
   .webgl-stage, .model-alt-view, .slice-lab { inset: 180px 12px 74px; }
+}
+
+.header-meta .theme-toggle {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  box-shadow: none;
+}
+:root[data-theme="dark"] .brand-mark {
+  color: #081015;
+}
+:root[data-theme="dark"] .header-meta button:not(.theme-toggle) {
+  background: var(--lime);
+  color: #081015;
+}
+:root[data-theme="dark"] .header-meta button b {
+  color: #081015;
+}
+:root[data-theme="dark"] input,
+:root[data-theme="dark"] select {
+  background: #11191d;
+  color: var(--ink);
+}
+
+:root[data-theme="dark"] .intro-copy h1,
+:root[data-theme="dark"] .controls-title h2,
+:root[data-theme="dark"] .section-heading h2 {
+  color: var(--ink);
+}
+:root[data-theme="dark"] .intro-copy p,
+:root[data-theme="dark"] .controls-title p,
+:root[data-theme="dark"] .brand p,
+:root[data-theme="dark"] label > span,
+:root[data-theme="dark"] fieldset legend,
+:root[data-theme="dark"] .preset-card p,
+:root[data-theme="dark"] .sheet-strip p,
+:root[data-theme="dark"] .model-copy p {
+  color: var(--muted);
+}
+:root[data-theme="dark"] .instrument,
+:root[data-theme="dark"] .plan-summary article,
+:root[data-theme="dark"] .sheet-strip article,
+:root[data-theme="dark"] .preset-card,
+:root[data-theme="dark"] .model-card,
+:root[data-theme="dark"] .timeline article,
+:root[data-theme="dark"] .table-row,
+:root[data-theme="dark"] .warning,
+:root[data-theme="dark"] fieldset {
+  background: rgba(17, 25, 29, .96);
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+:root[data-theme="dark"] .intro {
+  background: linear-gradient(135deg, rgba(17, 25, 29, .96), rgba(8, 13, 16, .92));
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+:root[data-theme="dark"] .ghost,
+:root[data-theme="dark"] .risk-options button,
+:root[data-theme="dark"] .viewer-tabs button,
+:root[data-theme="dark"] .preset-card button {
+  background: #11191d;
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+:root[data-theme="dark"] .viewer-tabs button.active,
+:root[data-theme="dark"] .risk-options button.active {
+  background: var(--lime);
+  color: #081015;
+}
+:root[data-theme="dark"] .model-controls,
+:root[data-theme="dark"] .workspace-bar,
+:root[data-theme="dark"] .metrics div,
+:root[data-theme="dark"] .ticket-summary div {
+  background: rgba(8, 13, 16, .78);
+  color: var(--ink);
+  border-color: var(--line-strong);
 }

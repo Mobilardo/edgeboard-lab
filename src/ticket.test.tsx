@@ -11,10 +11,10 @@ const plan = createBoardPlan(
 
 describe('maker ticket', () => {
   const html = renderToStaticMarkup(<MakerTicket plan={plan} />);
-  it('contains final dimensions', () => expect(html).toContain('FINAL DIMENSIONS'));
-  it('contains the material list', () => expect(html).toContain('Material list'));
-  it('contains the cut sequence', () => expect(html).toContain('Cut sequence'));
-  it('contains the panel diagram', () => expect(html).toContain('Panel diagram'));
-  it('contains risk warnings', () => expect(html).toContain('Risk warnings'));
-  it('contains the dry-fit checklist', () => expect(html).toContain('Dry-fit checklist'));
+  it('contains final dimensions', () => expect(html).toContain('ГОТОВЫЙ РАЗМЕР'));
+  it('contains the material list', () => expect(html).toContain('Материал'));
+  it('contains the cut sequence', () => expect(html).toContain('Порядок реза'));
+  it('contains the panel diagram', () => expect(html).toContain('Схема панели'));
+  it('contains risk warnings', () => expect(html).toContain('Предупреждения'));
+  it('contains the dry-fit checklist', () => expect(html).toContain('Чек-лист сухой сборки'));
 });
