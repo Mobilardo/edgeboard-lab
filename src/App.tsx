@@ -30,6 +30,56 @@ function NumberField({ label, value, min, max, step = 1, unit = 'mm', onChange }
 }
 
 
+
+function BoardModel3D({ plan }: { plan: BoardPlan }) {
+  const [rotation, setRotation] = useState({ x: 58, y: -34 });
+  const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
+  const [start, setStart] = useState(rotation);
+  const depth = Math.max(28, Math.min(70, plan.spec.thickness * 1.15));
+  const faceStyle = {
+    aspectRatio: `${plan.spec.length} / ${plan.spec.width}`,
+    gridTemplateColumns: plan.grid.columnWidths.map((width) => `${width}fr`).join(' '),
+    gridTemplateRows: plan.grid.rowHeights.map((height) => `${height}fr`).join(' '),
+    '--board-depth': `${depth}px`,
+    '--board-rot-x': `${rotation.x}deg`,
+    '--board-rot-y': `${rotation.y}deg`,
+  } as React.CSSProperties;
+  const beginDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDrag({ x: event.clientX, y: event.clientY });
+    setStart(rotation);
+  };
+  const moveDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!drag) return;
+    setRotation({ x: Math.max(28, Math.min(74, start.x - (event.clientY - drag.y) * 0.25)), y: start.y + (event.clientX - drag.x) * 0.35 });
+  };
+  const endDrag = () => setDrag(null);
+  return <section className="model-card" aria-label="Interactive 3D end-grain board model">
+    <div className="model-copy"><span className="eyebrow">ROTATABLE 3D MODEL</span><h2>Grab the board. Check the thickness.</h2><p>The generated pattern is mapped onto a physical slab so the plan feels like a board, not a spreadsheet.</p></div>
+    <div className="model-stage" onPointerDown={beginDrag} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={endDrag}>
+      <div className="board-model" style={faceStyle}>
+        <div className="model-face model-front">{plan.grid.cells.flatMap((row, rowIndex) => row.map((species, columnIndex) => <span key={`${rowIndex}-${columnIndex}`} className="model-cell" style={{ backgroundColor: plan.species[species]?.color, '--grain-angle': `${(rowIndex + columnIndex) % 2 ? 34 : -24}deg` } as React.CSSProperties} />))}</div>
+        <div className="model-face model-back" />
+        <div className="model-face model-right" />
+        <div className="model-face model-left" />
+        <div className="model-face model-top" />
+        <div className="model-face model-bottom" />
+      </div>
+      <div className="model-shadow" />
+    </div>
+    <div className="model-controls"><button onClick={() => setRotation({ x: 58, y: -34 })}>Front angle</button><button onClick={() => setRotation({ x: 68, y: 38 })}>Flip side</button><span>{plan.spec.length} × {plan.spec.width} × {plan.spec.thickness} mm</span></div>
+  </section>;
+}
+
+function SheetCards({ plan }: { plan: BoardPlan }) {
+  const firstPanel = plan.production.panels[0];
+  return <section className="sheet-strip" aria-label="Printable project sheets">
+    <article><span>Sheet 01</span><h3>Drawing</h3><p>Dimensioned board face with the source block visible before the crosscut.</p><div className="mini-drawing"><i /> <b>{plan.spec.length} mm</b></div></article>
+    <article><span>Sheet 02</span><h3>Buy and cut</h3><p>{format(plan.production.stockLengthNeeded / 1000, 2)} m stock, {format(plan.materials.wastePercent, 1)}% modeled kerf waste, ${format(plan.materials.totalCost, 2)} material estimate.</p><div className="mini-bars">{firstPanel?.strips.map((strip, index) => <i key={index} style={{ flexGrow: strip.width, background: plan.species[strip.species]?.color }} />)}</div></article>
+    <article><span>Sheet 03</span><h3>Assembly map</h3><p>{plan.production.sliceCount} slices, {plan.production.flipMap.filter(Boolean).length} planned flips, {plan.production.glueUps} glue-ups.</p><div className="mini-slices">{plan.production.flipMap.slice(0, 10).map((flip, index) => <i key={index} className={flip ? 'flip' : ''} />)}</div></article>
+  </section>;
+}
+
 function PlanSummary({ plan }: { plan: BoardPlan }) {
   const warnings = plan.risk.warnings.length;
   return <section className="plan-summary" aria-label="Plan summary">
@@ -126,9 +176,10 @@ export default function App() {
     <header className="app-header"><div className="brand-mark">EB<span>+</span></div><div className="brand"><h1>EdgeBoard Lab</h1><p>Constraint-first generator for buildable end-grain boards.</p></div><nav className="header-meta" aria-label="Project actions"><span>WORKBENCH / {new Date().getFullYear()}</span><a href="#ticket">Maker ticket</a><button onClick={() => window.print()}>Print <b>⌘P</b></button></nav></header>
     <section className="intro">
       <div className="intro-copy"><span className="eyebrow">CONSTRAINT-FIRST BOARD GENERATOR</span><h1>Design the face. Prove the build.</h1><p>EdgeBoard Lab turns saw kerf, clamp capacity, stock length and safe strip width into a manufacturable end-grain cutting board plan: pattern, panels, slices, risk report and print-ready maker ticket.</p><div className="intro-actions"><button onClick={regenerate}>Generate new plan</button><button className="ghost" onClick={() => window.print()}>Print ticket</button></div></div>
-      <div className="intro-board" aria-label="Selected board preview"><BoardPreview plan={plan} /></div>
+      <div className="intro-board" aria-label="Selected board 3D preview"><BoardModel3D plan={plan} /></div>
     </section>
     <PlanSummary plan={plan} />
+    <SheetCards plan={plan} />
     <main className="app-shell">
       <aside className="controls">
         <div className="controls-title"><span className="eyebrow">INPUT ARRAY</span><h2>Shop constraints</h2><p>Start with a shop profile, then tune the limits. The design changes before a risky cut reaches the saw.</p></div>
